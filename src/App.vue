@@ -72,8 +72,7 @@ async function handleFileUpload(event: Event) {
     const text = textContent.items.map((item: any) => item.str).join(" ");
 
     const cleanedText = text.replace(/\s+/g, ' ').trim();
-
-    const regex = /([A-Z0-9]{3,20})\s+(\d{1,3}(?:\s?\d{3})?)+(,00)\s+(pc|m)/g;
+    const regex = /([A-Z0-9]{3,20})\s+(\d{1,3}(?:\s?\d{3})?)+(,00)\s+(pc|m|Piece|Meter|piece|meter)/g;
 
     const data = await getData();
     let match;
