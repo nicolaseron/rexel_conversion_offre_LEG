@@ -1,8 +1,15 @@
 <template>
   <div class="container">
     <h1>Extracteur PDF vers Excel pour offre Legrand</h1>
-
     <div class="upload-section">
+      <label for="client">Numéro de client : </label>
+      <input type="text" name="client" id="client" v-model="client">
+    </div>
+    <div class="upload-section">
+      <label for="user">Vos initiales : </label>
+      <input type="text" name="user" id="user" placeholder="ex: nse" v-model="user">
+    </div>
+    <div class="upload-section" v-if="client && user">
       <input type="file" accept=".pdf" @change="handleFileUpload"/>
     </div>
 
@@ -46,6 +53,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
 
 interface ExtractedItem {
+  client: string
   reference: string
   quantity: number
 }
@@ -53,7 +61,8 @@ interface ExtractedItem {
 const pdfReferenceFound = ref(0);
 const matchedReferenceFound = ref(0);
 const itemNotFound = ref([]);
-
+const user = ref();
+const client = ref();
 
 const extractedData = ref<ExtractedItem[]>([])
 
@@ -73,7 +82,6 @@ async function handleFileUpload(event: Event) {
 
     const cleanedText = text.replace(/\s+/g, ' ').trim();
     const regex = /([A-Z0-9]{3,20})\s+(\d{1,3}(?:\s?\d{3})?)+(,00)\s+(pc|m|Piece|Meter|piece|meter)/g;
-
     const data = await getData();
     let match;
     while ((match = regex.exec(cleanedText)) !== null) {
@@ -100,43 +108,41 @@ async function handleFileUpload(event: Event) {
           itemNotFound.value.push(reference);
         }
 
-        extractedItems.push({reference, quantity});
+        extractedItems.push({client: client.value, reference, quantity});
       }
     }
   }
   extractedData.value = extractedItems;
 }
 
-
 async function getData() {
-
   try {
     const filePath = "/data/REF-LEGRAND.xlsx";
-
     const response = await fetch(filePath);
     if (!response.ok) {
       throw new Error(`Impossible de charger le fichier : ${response.statusText}`);
     }
-
     const arrayBuffer = await response.arrayBuffer();
     const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: "array"});
-
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-
     return XLSX.utils.sheet_to_json<{ "Ref_Rexel": string; "Ref_Legrand": string }>(worksheet);
-
   } catch (error) {
     console.error("Erreur lors de la lecture du fichier Excel :", error);
   }
-
 }
 
 function exportToExcel() {
-  const worksheet = XLSX.utils.json_to_sheet(extractedData.value)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Articles")
-  XLSX.writeFile(workbook, "articles_extraits.xlsx")
+  const worksheetData = [
+    ["char(11)", "char(35)", "num(15,3)"],
+    ["cunum", "cuprdc", "cuqty"],
+    ...extractedData.value.map(item => [item.client, item.reference, item.quantity])
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, `reoias${user.value}`);
+  XLSX.writeFile(workbook, `reoias${user.value}.csv`);
 }
 </script>
 
