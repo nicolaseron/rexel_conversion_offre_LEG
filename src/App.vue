@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref} from 'vue'
+import { ref } from 'vue'
 import * as XLSX from "xlsx"
 import * as pdfjsLib from 'pdfjs-dist'
 
@@ -108,7 +108,7 @@ async function handleFileUpload(event: Event) {
           itemNotFound.value.push(reference);
         }
 
-        extractedItems.push({client: client.value, reference, quantity});
+        extractedItems.push({ client: client.value, reference, quantity });
       }
     }
   }
@@ -123,7 +123,7 @@ async function getData() {
       throw new Error(`Impossible de charger le fichier : ${response.statusText}`);
     }
     const arrayBuffer = await response.arrayBuffer();
-    const workbook = XLSX.read(new Uint8Array(arrayBuffer), {type: "array"});
+    const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: "array" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     return XLSX.utils.sheet_to_json<{ "Ref_Rexel": string; "Ref_Legrand": string }>(worksheet);
@@ -139,12 +139,20 @@ function exportToExcel() {
     ...extractedData.value.map(item => [item.client, item.reference, item.quantity])
   ];
 
-  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, `reoias${user.value}`);
-  XLSX.writeFile(workbook, `reoias${user.value}.csv`);
+  // Utiliser ";" comme séparateur mais éviter de splitter "num(15,3)"
+  const csvContent = worksheetData.map(row => row.map(cell => cell.includes("num(15,3)") ? cell : cell).join(";")).join("\n");
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `reoias${user.value}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 </script>
+
+
 
 <style>
 .container {
